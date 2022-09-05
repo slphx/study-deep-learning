@@ -1,12 +1,10 @@
+import math
+
 import torch
 import torchvision
 from torchvision import transforms
 from torch.utils import data
-import hashlib
-import os
-import tarfile
-import zipfile
-import requests
+import random
 
 
 # sgd 随机梯度下降
@@ -32,13 +30,37 @@ class Accumulator:
         return self.data[idx]
 
 
-#
-def train_ch3(net, train_iter, test_iter, loss, num_epochs, updater):
+# 打乱数据，获取小批量数据
+def get_data_iter(data, batch_size):
+    inputs, outputs = data.iloc[:, 1:785], data.iloc[:, 0]
+    X, y = torch.tensor(inputs.values).type(torch.float), torch.tensor(outputs.values)
+    num_examples = len(X)
+    indices = list(range(num_examples))
+    # 这些样本是随机读取的，没有特定的顺序
+    train_iter = get_data_iter_batch(indices, num_examples, batch_size, X, y)
+    batch_num = math.ceil(num_examples/batch_size)
+    for i in range(batch_num):
+        yield next(train_iter)
+
+
+def get_data_iter_batch(indices, num_examples, batch_size, X, y):
+    while True:
+        random.shuffle(indices)
+        for i in range(0, num_examples, batch_size):
+            batch_indices = torch.tensor(indices[i: min(i + batch_size, num_examples)])
+            yield X[batch_indices], y[batch_indices]
+
+
+# 训练模型
+def train_ch3(net, train_data, test_data, batch_size, loss, num_epochs, updater):
     for epoch in range(num_epochs):
-        print('epoch:', epoch)
+        print('train epoch:', epoch)
+        train_iter = get_data_iter(train_data, batch_size)
+        test_iter = get_data_iter(test_data, batch_size)
         train_metrics = train_epoch_ch3(net, train_iter, loss, updater)
-        print(evaluate_accuracy(net, train_iter))
-    print('test:', evaluate_accuracy(net, test_iter))
+        print('train loss:', train_metrics[0], 'train accuracy:', train_metrics[1])
+    print('finish training')
+    print('test accuracy:', evaluate_accuracy(net, test_iter))
 
 
 def train_epoch_ch3(net, train_iter, loss, updater):
@@ -65,7 +87,7 @@ def train_epoch_ch3(net, train_iter, loss, updater):
     return metric[0] / metric[2], metric[1] / metric[2]
 
 
-#
+# 评估当前模型在测试集中的精确度
 def evaluate_accuracy(net, data_iter):
     if isinstance(net, torch.nn.Module):
         net.eval()
@@ -76,38 +98,20 @@ def evaluate_accuracy(net, data_iter):
     return metric[0] / metric[1]
 
 
-#
+# y_hat 为预测结果矩阵
 def accuracy(y_hat, y):
     if len(y_hat.shape) > 1 and y_hat.shape[1] > 1:
-        y_hat = y_hat.argmax(axis=1)
-    cmp = y_hat.type(y.dtype) == y
-    return float(cmp.type(y.dtype).sum())
+        y_hat = y_hat.argmax(axis=1)  # 获取每个预测中的最大值作为预测结果
+    cmp = y_hat.type(y.dtype) == y  # 比较预测是否正确
+    return float(cmp.type(y.dtype).sum())  # 计算正确预测数
 
 
-#
-def synthetic_data(w, b, num_examples):
-    X = torch.normal(0, 1, (num_examples, len(w)))
-    y = torch.matmul(X, w) + b
-    y += torch.normal(0, 0.01, y.shape)
-    return X, y.reshape((-1, 1))
-
-
-#
-def load_array(data_arrays, batch_size, is_train=True):
-    dataset = data.TensorDataset(*data_arrays)
-    return data.DataLoader(dataset, batch_size, shuffle=is_train)
-
-
-#
-def linreg(X, w, b):
-    return torch.matmul(X, w) + b
-
-
-#
+# 平方损失
 def squared_loss(y_hat, y):
     return (y_hat - y.reshape(y_hat.shape)) ** 2 / 2
 
 
+# 交叉熵
 def corr2d(X, K):  # @save
     h, w = K.shape
     Y = torch.zeros((X.shape[0] - h + 1, X.shape[1] - w + 1))

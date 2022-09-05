@@ -15,3 +15,10 @@
 
 ## data.iloc & data.loc
   通过 $iloc$ (基于索引号) $loc$ (基于标签) 选择数据
+
+## 处理缺失值
+  - 删除法，直接忽略缺失值
+  - 插值法，`inputs = inputs.fillna(inputs.mean())`
+
+## 转换为张量
+  `X, y = torch.tensor(inputs.values), torch.tensor(outputs.values)`

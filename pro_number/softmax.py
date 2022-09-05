@@ -1,16 +1,32 @@
 import pandas as pd
 import torch
 from torch import nn
-from util import d2lHelper as d2l
+from util import pro_number_helper as d2l
+
+
+def init_weights(m):
+    if type(m) == nn.Linear:
+        nn.init.normal_(m.weight, std=0.01)
+
 
 # 读取数据集
-path = './mnist_dataset/mnist_train.csv'
-train_data = pd.read_csv(path, header=None)
+print('read data')
+path1 = './mnist_dataset/mnist_train.csv'
+path2 = './mnist_dataset/mnist_test.csv'
+train_data = pd.read_csv(path1, header=None)
+test_data = pd.read_csv(path1, header=None)
+print('finish')
 
 # 初始化参数
 batch_size = 256
-num_inputs = 784
-num_outputs = 10
+num_epochs = 10
+net = nn.Sequential(nn.Linear(784, 10))
+net.apply(init_weights)
 
-W = torch.normal(0, 0.01, size=(num_inputs, num_outputs), requires_grad=True)
-b = torch.zeros(num_outputs, requires_grad=True)
+
+loss = nn.CrossEntropyLoss(reduction='none')
+trainer = torch.optim.SGD(net.parameters(), lr=0.1)
+
+print('train data')
+d2l.train_ch3(net, train_data, test_data, batch_size, loss, num_epochs, trainer)
+print('finish')
