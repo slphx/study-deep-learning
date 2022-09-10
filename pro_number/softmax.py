@@ -30,3 +30,5 @@ trainer = torch.optim.SGD(net.parameters(), lr=0.1)
 print('train data')
 d2l.train_ch3(net, train_data, test_data, batch_size, loss, num_epochs, trainer)
 print('finish')
+
+torch.save(net.state_dict(), 'softmax.params')

@@ -3,3 +3,6 @@
 
 ## softmax
   ![softmax](resultPic/softmax.png)
+
+## LeNet
+  ![LeNet](resultPic/LeNet.png)
