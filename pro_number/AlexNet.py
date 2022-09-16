@@ -1,20 +1,18 @@
 import torch
+import pandas as pd
 from torch import nn
-from pathlib import Path
-import gradio as gr
+from util import pro_number_helper as d2l
 
-# model = nn.Sequential(
-#     nn.Conv2d(1, 6, kernel_size=5, padding=2), nn.BatchNorm2d(6), nn.Sigmoid(),
-#     nn.AvgPool2d(kernel_size=2, stride=2),
-#     nn.Conv2d(6, 16, kernel_size=5), nn.BatchNorm2d(16), nn.Sigmoid(),
-#     nn.AvgPool2d(kernel_size=2, stride=2),
-#     nn.Flatten(),
-#     nn.Linear(16 * 5 * 5, 120), nn.BatchNorm1d(120), nn.Sigmoid(),
-#     nn.Linear(120, 84), nn.BatchNorm1d(84), nn.Sigmoid(),
-#     nn.Linear(84, 10))
-# state_dict = torch.load('LeNet.params')
+# 读取数据集
+print('read data')
+path1 = './mnist_dataset/mnist_train.csv'
+path2 = './mnist_dataset/mnist_test.csv'
+train_data = pd.read_csv(path1, header=None)
+test_data = pd.read_csv(path1, header=None)
+print('finish')
 
-model = nn.Sequential(
+# 初始化参数
+net = nn.Sequential(
     # 这里，我们使用一个11*11的更大窗口来捕捉对象。
     # 另外，输出通道的数目远大于LeNet
     nn.Conv2d(1, 96, kernel_size=11, padding=1), nn.ReLU(),
@@ -37,21 +35,13 @@ model = nn.Sequential(
     nn.Dropout(p=0.5),
     # 最后是输出层。由于这里使用Fashion-MNIST，所以用类别数为10，而非论文中的1000
     nn.Linear(1024, 10))
-state_dict = torch.load('AlexNet.params')
 
-model.load_state_dict(state_dict, strict=False)
-model.eval()
-LABELS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+batch_size = 256
+num_epochs = 10
+lr = 0.01
 
+print('train data')
+d2l.train_ch6(net, train_data, test_data, batch_size, num_epochs, lr, d2l.try_gpu())
+print('finish')
 
-def predict(img):
-    x = torch.tensor(img, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
-    with torch.no_grad():
-        out = model(x)
-    probabilities = torch.nn.functional.softmax(out[0], dim=0)
-    values, indices = torch.topk(probabilities, 5)
-    confidences = {LABELS[i]: v.item() for i, v in zip(indices, values)}
-    return confidences
-
-
-gr.Interface(fn=predict, inputs="sketchpad", outputs="label", live=True).launch()
+torch.save(net.state_dict(), 'AlexNet.params')

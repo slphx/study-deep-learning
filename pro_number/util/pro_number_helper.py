@@ -48,6 +48,24 @@ class Accumulator:
 def get_data_iter(data, batch_size):
     inputs, outputs = data.iloc[:, 1:785], data.iloc[:, 0]
     X, y = torch.tensor(inputs.values).reshape(-1, 1, 28, 28).type(torch.float), torch.tensor(outputs.values)
+
+    shape_aug = torchvision.transforms.RandomResizedCrop(
+        (28, 28), scale=(0.5, 1), ratio=(0.5, 2))
+    for img in X:
+        shape_aug(img)
+
+    num_examples = len(X)
+    indices = list(range(num_examples))
+    # 这些样本是随机读取的，没有特定的顺序
+    train_iter = get_data_iter_batch(indices, num_examples, batch_size, X, y)
+    batch_num = math.ceil(num_examples/batch_size)
+    for i in range(batch_num):
+        yield next(train_iter)
+
+
+def get_test_iter(data, batch_size):
+    inputs, outputs = data.iloc[:, 1:785], data.iloc[:, 0]
+    X, y = torch.tensor(inputs.values).reshape(-1, 1, 28, 28).type(torch.float), torch.tensor(outputs.values)
     num_examples = len(X)
     indices = list(range(num_examples))
     # 这些样本是随机读取的，没有特定的顺序
@@ -154,7 +172,7 @@ def train_ch6(net, train_data, test_data, batch_size, num_epochs, lr, device):
     for epoch in range(num_epochs):
         print("epoch:", epoch)
         train_iter = get_data_iter(train_data, batch_size)
-        test_iter = get_data_iter(test_data, batch_size)
+        test_iter = get_test_iter(test_data, batch_size)
         # 训练损失之和，训练准确率之和，样本数
         metric = Accumulator(3)
         net.train()
